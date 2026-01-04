@@ -23,26 +23,36 @@ class VideoRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {"status": "ok", "mode": "faceless-video-backend-ai"}
+    return {"status": "ok", "mode": "faceless-video-backend-scenes"}
 
 @app.post("/generate")
 def generate_video(req: VideoRequest):
     job_id = str(uuid.uuid4())
 
     system_prompt = (
-        "You are a short-form video strategist for TikTok and YouTube Shorts. "
-        "Create a viral, faceless video script with a strong hook, fast pacing, "
-        "and clear beats."
+        "You are an expert faceless short-form video creator. "
+        "You create viral scripts AND visual scene descriptions. "
+        "Visuals must not include people or faces."
     )
 
     user_prompt = f"""
 Topic: {req.prompt}
 Platform: {req.platform}
 
-Return:
-- Hook (1 sentence)
-- 5 short beats (1 line each)
-- Call to action
+Return exactly in this format:
+
+HOOK:
+<one sentence>
+
+BEATS:
+1. <beat text> | VISUAL: <faceless visual description>
+2. <beat text> | VISUAL: <faceless visual description>
+3. <beat text> | VISUAL: <faceless visual description>
+4. <beat text> | VISUAL: <faceless visual description>
+5. <beat text> | VISUAL: <faceless visual description>
+
+CTA:
+<call to action>
 """
 
     response = client.responses.create(
@@ -53,10 +63,10 @@ Return:
         ],
     )
 
-    script = response.output_text
+    content = response.output_text
 
     return {
         "job_id": job_id,
-        "status": "script_generated",
-        "script": script
+        "status": "scenes_generated",
+        "content": content
     }
