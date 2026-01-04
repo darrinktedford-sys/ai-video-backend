@@ -1,11 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uuid
 import os
-from openai import OpenAI
+import time
+from openai import OpenAI, APIConnectionError, RateLimitError
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    timeout=30.0,   # important
+)
 
 app = FastAPI()
 
@@ -55,18 +59,28 @@ CTA:
 <call to action>
 """
 
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
+    # 🔁 RETRY LOGIC (CRITICAL FOR RENDER FREE)
+    attempts = 3
+    for attempt in range(attempts):
+        try:
+            response = client.responses.create(
+                model="gpt-4.1-mini",
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
 
-    content = response.output_text
+            return {
+                "job_id": job_id,
+                "status": "scenes_generated",
+                "content": response.output_text
+            }
 
-    return {
-        "job_id": job_id,
-        "status": "scenes_generated",
-        "content": content
-    }
+        except (APIConnectionError, RateLimitError) as e:
+            if attempt == attempts - 1:
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service temporarily unavailable. Please try again."
+                )
+            time.sleep(2)  # wait before retry
