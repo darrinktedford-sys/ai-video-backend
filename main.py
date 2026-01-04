@@ -64,7 +64,7 @@ CTA:
     for attempt in range(attempts):
         try:
             response = client.responses.create(
-                model="gpt-4.1-mini",
+                model="gpt-40-mini",
                 input=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
